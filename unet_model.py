@@ -123,7 +123,15 @@ class UnetModel(nn.Module):
         # Apply up-sampling layers
         for layer in self.up_sample_layers:
             output = F.interpolate(output, scale_factor=2, mode='bilinear', align_corners=False)
-            output = torch.cat([output, stack.pop()], dim=1)
+            downsample_layer = stack.pop()
+            padding = [0, 0, 0, 0]
+            if output.shape[-1] != downsample_layer.shape[-1]:
+                padding[1] = 1  # padding right
+            if output.shape[-2] != downsample_layer.shape[-2]:
+                padding[3] = 1  # padding bottom
+            if torch.sum(torch.tensor(padding)) != 0:
+                output = F.pad(output, padding, "reflect")
+            output = torch.cat([output, downsample_layer], dim=1)
             output = layer(output)
         return self.conv2(output)
 
